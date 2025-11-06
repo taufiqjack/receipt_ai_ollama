@@ -1,35 +1,44 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 
-export async function POST(req: NextRequest) {
+export const runtime = 'nodejs';
+
+export async function POST(req: Request) {
     try {
-        const { prompt, model = "llama3" } = await req.json();
+        const contentType = req.headers.get('content-type') || '';
 
-        const res = await fetch("http://127.0.0.1:11434/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+        let prompt = '';
+        let imageBuffer: Buffer | null = null;
+
+        if (contentType.includes('multipart/form-data')) {
+            const formData = await req.formData();
+            prompt = formData.get('prompt')?.toString() || '';
+            const imageFile = formData.get('image') as File | null;
+            if (imageFile) {
+                const arrayBuffer = await imageFile.arrayBuffer();
+                imageBuffer = Buffer.from(arrayBuffer);
+            }
+        } else {
+            const body = await req.json();
+            prompt = body.prompt || '';
+        }
+
+        const ollamaRes = await fetch('http://localhost:11434/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model,
-                messages: [{ role: "user", content: prompt }],
+                model: 'llava:13b',
+                prompt,
+                images: imageBuffer ? [imageBuffer.toString('base64')] : undefined,
                 stream: false,
             }),
         });
 
-        const text = await res.text();
+        const data = await ollamaRes.json();
+        console.log('Ollama Response:', data);
 
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch (err) {
-            console.error("Failed to parse Ollama response:", text);
-            throw new Error("Ollama returned invalid JSON");
-        }
-
-        return NextResponse.json({ reply: data.message?.content || "No reply" });
+        return NextResponse.json({ reply: data.response });
     } catch (err: any) {
-        console.error("API route error:", err);
-        return NextResponse.json(
-            { error: err.message || "Unexpected error" },
-            { status: 500 }
-        );
+        console.error('Error in /api/ollama:', err);
+        return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
 }
