@@ -1,6 +1,9 @@
 
 ## Getting Started
 
+Install Ollama LLM in 
+Open [Ollama](https://ollama.com/download)
+
 First, start Ollama Server or
 
 ```bash

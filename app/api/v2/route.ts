@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ reply: data.response });
     } catch (err: any) {
-        console.error('Error in /api/ollama:', err);
+        console.error('Error in /api/v2:', err);
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
 }
